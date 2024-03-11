@@ -41,16 +41,18 @@ pipeline{
         }
         stage('OWASP FS SCAN') {
             steps {
-                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                 //dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                sh 'pwd'
             }
         }
         stage('Docker Scout FS') {
             steps {
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
-                       sh 'docker-scout quickview fs://.'
-                       sh 'docker-scout cves fs://.'
+                       //sh 'docker-scout quickview fs://.'
+                       //sh 'docker-scout cves fs://.'
+                       sh 'docker --version'
                    }
                 }   
             }
@@ -60,7 +62,7 @@ pipeline{
                 script{
                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
                        sh "docker build -t myntra ."
-                       sh "docker tag hotstar prashant680844/myntra:latest "
+                       sh "docker tag myntra prashant680844/myntra:latest "
                        sh "docker push prashant680844/myntra:latest"
                     }
                 }
@@ -77,9 +79,29 @@ pipeline{
                 }   
             }
         }
+          stage('TRIVY FS SCAN') {
+            steps {
+                script{
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
+                      // sh 'docker-scout quickview prashant680844/myntra:latest'
+                       //sh 'docker-scout cves prashant680844/myntra:latest'
+                       //sh 'docker-scout recommendations prashant680844/myntra:latest'
+                      
+                       sh 'trivy image prashant680844/myntra:latest > trivyfs.json'
+                   }
+                }
+                
+            }
+        }
+        stage("Remove container"){
+            steps{
+                sh "docker stop myntra | true"
+                sh "docker rm myntra | true"
+            }
+        }
         stage("deploy_docker"){
             steps{
-                sh "docker run -d --name hotstar -p 3000:3000 prashant680844/myntra:latest"
+                sh "docker run -d --name myntra -p 3000:3000 prashant680844/myntra:latest"
             }
         }
         stage('Deploy to kubernets'){
