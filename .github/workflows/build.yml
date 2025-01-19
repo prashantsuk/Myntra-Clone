@@ -1,26 +1,36 @@
-name: Build
+name: Docker Build and Run
 
 on:
-  push:
-    branches:
-      - main
-
+  workflow_call:  # Allows this workflow to be called by other workflows
 
 jobs:
-  build:
-    name: Build
+  build-and-run:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+      # Step 1: Checkout the code from the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 3: Cache Docker layers to speed up subsequent builds
+      - name: Cache Docker layers
+        uses: actions/cache@v3
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
+      # Step 4: Build the Docker image
+      - name: Build Docker image
+        run: |
+          docker build -t apache2-image .
+
+      # Step 5: Run the Docker container
+      - name: Run Docker container
+        run: |
+          docker run -d -p 8080:80 apache2-image
